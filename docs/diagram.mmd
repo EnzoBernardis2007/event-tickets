@@ -1,0 +1,332 @@
+---
+title: Database Diagram — Event & Ticketing Platform API
+---
+erDiagram
+    %% Diagram Version: 1.0.0
+    %% Author: Enzo Bernar
+    %% Date: 03/09/2026
+    
+    direction TB
+
+    %% ==========================================
+    %% MODULE: USERS, AUTHENTICATION & RBAC
+    %% ==========================================
+
+    USERS {
+        uuid id PK
+        varchar(120) name
+        varchar(320) email UK
+        varchar(255) passwordHash
+        timestamp createdAt
+        timestamp updatedAt
+        timestamp deletedAt
+    }
+
+    ROLES {
+        uuid id PK
+        varchar(50) name UK
+        varchar(255) description
+        timestamp createdAt
+    }
+
+    PERMISSIONS {
+        uuid id PK
+        varchar(100) name UK
+        varchar(255) description
+        timestamp createdAt
+    }
+
+    USER_ROLES {
+        uuid user_id PK, FK
+        uuid role_id PK, FK
+        timestamp assignedAt
+    }
+
+    ROLE_PERMISSIONS {
+        uuid role_id PK, FK
+        uuid permission_id PK, FK
+    }
+
+    NOTIFICATIONS {
+        uuid id PK
+        uuid user_id FK
+        varchar(100) type
+        varchar(255) title
+        text message
+        boolean read
+        timestamp createdAt
+    }
+
+    AUDIT_LOGS {
+        uuid id PK
+        uuid user_id FK
+        varchar(100) action
+        varchar(100) entityType
+        varchar(100) entityId
+        varchar(45) ipAddress
+        timestamp createdAt
+    }
+
+    %% ==========================================
+    %% MODULE: EVENTS, CATEGORIES & VENUES
+    %% ==========================================
+
+    CATEGORIES {
+        uuid id PK
+        varchar(100) name UK
+        varchar(500) description
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    VENUES {
+        uuid id PK
+        varchar(200) name
+        varchar(300) address
+        varchar(30) addressNumber
+        varchar(100) complement
+        varchar(100) city
+        varchar(100) state
+        varchar(20) postalCode
+        varchar(100) country
+        decimal latitude
+        decimal longitude
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    EVENTS {
+        uuid id PK
+        uuid category_id FK
+        uuid venue_id FK
+        uuid organizer_id FK
+        varchar(200) title
+        text description
+        enum status "DRAFT, PUBLISHED, SALES_CLOSED, STARTED, FINISHED, CANCELLED"
+        timestamp startDateTime
+        timestamp endDateTime
+        timestamp salesStartAt
+        timestamp salesEndAt
+        integer maxTicketsPerCustomer
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    EVENT_STAFF {
+        uuid id PK
+        uuid event_id FK
+        uuid user_id FK
+        timestamp createdAt
+    }
+
+    EVENT_STAFF_PERMISSIONS {
+        uuid event_staff_id PK, FK
+        uuid permission_id PK, FK
+    }
+
+    TICKET_TIERS {
+        uuid id PK
+        uuid event_id FK
+        varchar(100) name
+        varchar(1000) description
+        decimal price
+        integer totalCapacity
+        integer availableQuantity
+        integer reservedQuantity
+        integer soldQuantity
+        timestamp salesStartAt
+        timestamp salesEndAt
+        integer maxPerCustomer
+        enum status "AVAILABLE, SOLD_OUT, CLOSED, DISABLED"
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    %% ==========================================
+    %% MODULE: RESERVATIONS
+    %% ==========================================
+
+    RESERVATIONS {
+        uuid id PK
+        uuid user_id FK
+        uuid event_id FK
+        uuid order_id FK
+        enum status "ACTIVE, CONVERTED, CANCELLED, EXPIRED"
+        decimal subtotal
+        decimal fees
+        decimal totalAmount
+        char(3) currency
+        timestamp expiresAt
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    RESERVATION_ITEMS {
+        uuid id PK
+        uuid reservation_id FK
+        uuid tier_id FK
+        integer quantity
+        decimal unitPrice
+        decimal totalPrice
+    }
+
+    %% ==========================================
+    %% MODULE: ORDERS, PAYMENTS & REFUNDS
+    %% ==========================================
+
+    ORDERS {
+        uuid id PK
+        uuid customer_id FK
+        uuid event_id FK
+        varchar(50) orderNumber UK
+        enum status "PENDING_PAYMENT, PAID, PAYMENT_FAILED, CANCELLED, REFUNDED"
+        decimal subtotal
+        decimal fees
+        decimal discount
+        decimal totalAmount
+        char(3) currency
+        timestamp createdAt
+        timestamp paidAt
+        timestamp cancelledAt
+    }
+
+    ORDER_ITEMS {
+        uuid id PK
+        uuid order_id FK
+        uuid tier_id FK
+        integer quantity
+        decimal unitPrice
+        decimal totalPrice
+    }
+
+    PAYMENTS {
+        uuid id PK
+        uuid order_id FK
+        varchar(50) provider
+        varchar(255) providerTransactionId
+        enum method "PIX, CREDIT_CARD, DEBIT_CARD"
+        enum status "PENDING, PROCESSING, APPROVED, DECLINED, CANCELLED, REFUNDED"
+        decimal amount
+        char(3) currency
+        json paymentPayload
+        timestamp expiresAt
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    REFUNDS {
+        uuid id PK
+        uuid order_id FK
+        uuid payment_id FK
+        decimal amount
+        enum status "PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED"
+        varchar(500) reason
+        timestamp requestedAt
+        timestamp completedAt
+    }
+
+    %% ==========================================
+    %% MODULE: TICKETS & CHECK-IN
+    %% ==========================================
+
+    TICKETS {
+        uuid id PK
+        uuid order_id FK
+        uuid order_item_id FK
+        uuid event_id FK
+        uuid tier_id FK
+        uuid owner_id FK
+        varchar(255) attendee_name
+        varchar(50) attendee_document
+        varchar(320) attendee_email
+        varchar(30) attendee_phone
+        enum status "VALID, USED, CANCELLED, TRANSFER_PENDING, TRANSFERRED"
+        varchar(512) qrCodeSignature UK
+        timestamp issuedAt
+        timestamp usedAt
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    CHECKIN_RECORDS {
+        uuid id PK
+        uuid ticket_id FK
+        uuid checked_in_by_user_id FK
+        enum status "SUCCESS, DENIED"
+        varchar(255) attendeeName
+        varchar(255) deviceId
+        varchar(500) denialReason
+        timestamp checkedInAt
+    }
+
+    %% ==========================================
+    %% RBAC & USER MANAGEMENT
+    %% ==========================================
+
+    USERS ||--o{ USER_ROLES : "assigned"
+    ROLES ||--o{ USER_ROLES : "assigned_to"
+
+    ROLES ||--o{ ROLE_PERMISSIONS : "contains"
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : "granted_to"
+
+    USERS ||--o{ NOTIFICATIONS : "receives"
+    USERS ||--o{ AUDIT_LOGS : "generates"
+
+    USERS ||--o{ EVENTS : "organizes"
+
+    USERS ||--o{ EVENT_STAFF : "serves_as"
+    EVENTS ||--o{ EVENT_STAFF : "has_staff"
+
+    EVENT_STAFF ||--o{ EVENT_STAFF_PERMISSIONS : "granted"
+    PERMISSIONS ||--o{ EVENT_STAFF_PERMISSIONS : "assigned_to_staff"
+
+    %% ==========================================
+    %% EVENTS & CATALOG
+    %% ==========================================
+
+    CATEGORIES ||--o{ EVENTS : "classifies"
+    VENUES ||--o{ EVENTS : "hosts"
+
+    EVENTS ||--o{ TICKET_TIERS : "provides"
+
+    %% ==========================================
+    %% RESERVATIONS
+    %% ==========================================
+
+    USERS ||--o{ RESERVATIONS : "makes"
+    EVENTS ||--o{ RESERVATIONS : "has_reservations"
+
+    RESERVATIONS ||--o{ RESERVATION_ITEMS : "contains"
+    TICKET_TIERS ||--o{ RESERVATION_ITEMS : "reserves_tier"
+
+    RESERVATIONS ||--o| ORDERS : "converted_to"
+
+    %% ==========================================
+    %% ORDERS & PAYMENTS
+    %% ==========================================
+
+    USERS ||--o{ ORDERS : "places"
+    EVENTS ||--o{ ORDERS : "generates"
+
+    ORDERS ||--o{ ORDER_ITEMS : "contains"
+    TICKET_TIERS ||--o{ ORDER_ITEMS : "refers_to"
+
+    ORDERS ||--o{ PAYMENTS : "has_attempts"
+
+    PAYMENTS ||--o{ REFUNDS : "has_refunds"
+    ORDERS ||--o{ REFUNDS : "can_have"
+
+    %% ==========================================
+    %% TICKETS & CHECK-IN
+    %% ==========================================
+
+    ORDERS ||--o{ TICKETS : "generates"
+    ORDER_ITEMS ||--o{ TICKETS : "generates"
+
+    EVENTS ||--o{ TICKETS : "belongs_to_event"
+    TICKET_TIERS ||--o{ TICKETS : "issued_from"
+
+    USERS ||--o{ TICKETS : "owns"
+
+    TICKETS ||--o{ CHECKIN_RECORDS : "has_checkin_attempts"
+    USERS ||--o{ CHECKIN_RECORDS : "validated_by"
