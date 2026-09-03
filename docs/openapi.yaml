@@ -1,0 +1,2830 @@
+openapi: 3.0.3
+
+info:
+  title: Event & Ticketing Platform API
+  description: |
+    RESTful API for a complete event and ticket sales platform.
+    Supports customer accounts, organizer management, event publishing,
+    ticket batches, temporary inventory reservations, checkout, payments,
+    refunds, tickets, QR-code check-in, notifications, and administration.
+
+    The API is designed for a Spring Boot monolith using PostgreSQL,
+    Spring Data JPA/Hibernate, Spring Security/JWT, Flyway/Liquibase,
+    RFC 7807 Problem Details, pagination, sorting, filtering, and HATEOAS.
+  version: 1.0.0
+  contact:
+    name: Enzo Bernardis
+    email: enzobernardis2007@gmail.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: http://localhost:8080/v1
+    description: Local Development
+
+tags:
+  - name: Authentication
+  - name: Current User
+  - name: Users
+  - name: Events
+  - name: Ticket Tiers
+  - name: Reservations
+  - name: Orders
+  - name: Payments
+  - name: Tickets
+  - name: Check-in
+  - name: Categories
+  - name: Notifications
+  - name: Organizer
+  - name: Administration
+  - name: Webhooks
+
+paths:
+
+  # ===========================================================================
+  # AUTHENTICATION
+  # ===========================================================================
+
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a customer account
+      operationId: registerCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate a user
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Revoke the current refresh token
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        '204': { description: Logged out successfully }
+        '401': { $ref: '#/components/responses/Problem401' }
+
+  /auth/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request a password reset
+      operationId: forgotPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '202': { description: Reset request accepted }
+        '400': { $ref: '#/components/responses/Problem400' }
+
+  /auth/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Reset password using a reset token
+      operationId: resetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204': { description: Password reset successfully }
+        '400': { $ref: '#/components/responses/Problem400' }
+        '410': { $ref: '#/components/responses/Problem410' }
+
+  /auth/verify-email:
+    post:
+      tags: [Authentication]
+      summary: Verify an email address
+      operationId: verifyEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationRequest'
+      responses:
+        '204': { description: Email verified }
+        '400': { $ref: '#/components/responses/Problem400' }
+
+  /auth/resend-verification:
+    post:
+      tags: [Authentication]
+      summary: Resend email verification
+      operationId: resendVerification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendVerificationRequest'
+      responses:
+        '202': { description: Verification email queued }
+        '400': { $ref: '#/components/responses/Problem400' }
+
+  # ===========================================================================
+  # CURRENT USER
+  # ===========================================================================
+
+  /me:
+    get:
+      tags: [Current User]
+      summary: Get current authenticated user
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+
+    patch:
+      tags: [Current User]
+      summary: Update current user's profile
+      operationId: updateCurrentUser
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /me/password:
+    put:
+      tags: [Current User]
+      summary: Change current user's password
+      operationId: changePassword
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204': { description: Password changed }
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+
+  /me/tickets:
+    get:
+      tags: [Tickets]
+      summary: List tickets owned by the current user
+      operationId: listMyTickets
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+        - name: eventId
+          in: query
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Paginated tickets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageTicketResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+
+  /me/orders:
+    get:
+      tags: [Orders]
+      summary: List orders placed by the current user
+      operationId: listMyOrders
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+      responses:
+        '200':
+          description: Paginated orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOrderResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+
+  # ===========================================================================
+  # USERS / ADMINISTRATION
+  # ===========================================================================
+
+  /users/organizers:
+    post:
+      tags: [Users]
+      summary: Create an organizer account
+      operationId: createOrganizer
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: Organizer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /users/admins:
+    post:
+      tags: [Users]
+      summary: Create an administrator account
+      operationId: createAdmin
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: Administrator created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /users:
+    get:
+      tags: [Administration]
+      summary: Search users
+      operationId: listUsers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: email
+          in: query
+          schema: { type: string, format: email }
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserRole'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Paginated users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageUserResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+
+  /users/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Administration]
+      summary: Get a user
+      operationId: getUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+    patch:
+      tags: [Administration]
+      summary: Update a user's administrative fields
+      operationId: updateUser
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUserUpdateRequest'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+    delete:
+      tags: [Administration]
+      summary: Soft-delete a user
+      operationId: deleteUser
+      security:
+        - BearerAuth: []
+      responses:
+        '204': { description: User deactivated }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  # ===========================================================================
+  # EVENT CATALOG
+  # ===========================================================================
+
+  /events:
+    get:
+      tags: [Events]
+      summary: Search and browse published events
+      operationId: listEvents
+      parameters:
+        - name: q
+          in: query
+          description: Full-text search over event title and description.
+          schema: { type: string }
+        - name: categoryId
+          in: query
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: city
+          in: query
+          schema: { type: string }
+        - name: state
+          in: query
+          schema: { type: string }
+        - name: startDateFrom
+          in: query
+          schema: { type: string, format: date-time }
+        - name: startDateTo
+          in: query
+          schema: { type: string, format: date-time }
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/EventStatus'
+        - name: minPrice
+          in: query
+          schema: { type: number, format: double, minimum: 0 }
+        - name: maxPrice
+          in: query
+          schema: { type: number, format: double, minimum: 0 }
+        - name: availableOnly
+          in: query
+          schema: { type: boolean, default: true }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Paginated events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEventResponse'
+
+    post:
+      tags: [Events]
+      summary: Create a draft event
+      operationId: createEvent
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCreateRequest'
+      responses:
+        '201':
+          description: Draft event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetailResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    get:
+      tags: [Events]
+      summary: Get event details
+      operationId: getEvent
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetailResponse'
+        '404': { $ref: '#/components/responses/Problem404' }
+
+    patch:
+      tags: [Events]
+      summary: Update an event
+      operationId: updateEvent
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventUpdateRequest'
+      responses:
+        '200':
+          description: Event updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetailResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+    delete:
+      tags: [Events]
+      summary: Cancel or soft-delete an event
+      operationId: deleteEvent
+      security:
+        - BearerAuth: []
+      responses:
+        '204': { description: Event cancelled }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /events/{eventId}/publish:
+    post:
+      tags: [Events]
+      summary: Publish an event
+      operationId: publishEvent
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Event published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetailResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /events/{eventId}/unpublish:
+    post:
+      tags: [Events]
+      summary: Unpublish an event
+      operationId: unpublishEvent
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Event unpublished
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetailResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /events/{eventId}/cancel:
+    post:
+      tags: [Events]
+      summary: Cancel an event
+      operationId: cancelEvent
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCancellationRequest'
+      responses:
+        '200':
+          description: Event cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetailResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /events/{eventId}/tickets:
+    get:
+      tags: [Ticket Tiers]
+      summary: List ticket tiers for an event
+      operationId: listEventTicketTiers
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Ticket tiers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketTierResponse'
+        '404': { $ref: '#/components/responses/Problem404' }
+
+    post:
+      tags: [Ticket Tiers]
+      summary: Create a ticket tier
+      operationId: createTicketTier
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketTierRequest'
+      responses:
+        '201':
+          description: Ticket tier created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketTierResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /events/{eventId}/tickets/{tierId}:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+      - $ref: '#/components/parameters/TierId'
+    get:
+      tags: [Ticket Tiers]
+      summary: Get a ticket tier
+      operationId: getTicketTier
+      responses:
+        '200':
+          description: Ticket tier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketTierResponse'
+        '404': { $ref: '#/components/responses/Problem404' }
+
+    patch:
+      tags: [Ticket Tiers]
+      summary: Update a ticket tier
+      operationId: updateTicketTier
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketTierUpdateRequest'
+      responses:
+        '200':
+          description: Ticket tier updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketTierResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+    delete:
+      tags: [Ticket Tiers]
+      summary: Disable a ticket tier
+      operationId: deleteTicketTier
+      security:
+        - BearerAuth: []
+      responses:
+        '204': { description: Ticket tier disabled }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  # ===========================================================================
+  # RESERVATIONS
+  # ===========================================================================
+
+  /reservations:
+    post:
+      tags: [Reservations]
+      summary: Hold tickets temporarily
+      description: |
+        Creates a temporary inventory hold. The default reservation TTL is
+        10 minutes. Inventory must be atomically decremented/locked so that
+        concurrent buyers cannot oversell a ticket tier.
+      operationId: createReservation
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        '201':
+          description: Reservation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '409':
+          description: Insufficient inventory or reservation conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422': { $ref: '#/components/responses/Problem422' }
+
+  /reservations/{reservationId}:
+    parameters:
+      - $ref: '#/components/parameters/ReservationId'
+    get:
+      tags: [Reservations]
+      summary: Get reservation details
+      operationId: getReservation
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Reservation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /reservations/{reservationId}/cancel:
+    post:
+      tags: [Reservations]
+      summary: Cancel an active reservation
+      operationId: cancelReservation
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReservationId'
+      responses:
+        '204': { description: Reservation cancelled and inventory released }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  # ===========================================================================
+  # ORDERS / CHECKOUT
+  # ===========================================================================
+
+  /orders/checkout:
+    post:
+      tags: [Orders]
+      summary: Convert a reservation into an order
+      description: |
+        Validates the reservation, creates the order and payment attempt,
+        and changes the inventory state from held to sold only after
+        successful payment according to the configured payment flow.
+      operationId: checkout
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '201':
+          description: Order created and payment initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '409': { $ref: '#/components/responses/Problem409' }
+        '422': { $ref: '#/components/responses/Problem422' }
+
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List orders for the current user
+      operationId: listOrders
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: createdFrom
+          in: query
+          schema: { type: string, format: date-time }
+        - name: createdTo
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOrderResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+
+  /orders/{orderId}:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    get:
+      tags: [Orders]
+      summary: Get order details
+      operationId: getOrder
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /orders/{orderId}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel an unpaid order
+      operationId: cancelOrder
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  # ===========================================================================
+  # PAYMENTS
+  # ===========================================================================
+
+  /orders/{orderId}/payments:
+    get:
+      tags: [Payments]
+      summary: List payment attempts for an order
+      operationId: listOrderPayments
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Payment attempts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /orders/{orderId}/payments/{paymentId}:
+    get:
+      tags: [Payments]
+      summary: Get payment details
+      operationId: getPayment
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+        - $ref: '#/components/parameters/PaymentId'
+      responses:
+        '200':
+          description: Payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /orders/{orderId}/refund:
+    post:
+      tags: [Payments]
+      summary: Request a refund for an order
+      operationId: refundOrder
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+      responses:
+        '202':
+          description: Refund requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  # ===========================================================================
+  # TICKETS
+  # ===========================================================================
+
+  /tickets/{ticketId}:
+    parameters:
+      - $ref: '#/components/parameters/TicketId'
+    get:
+      tags: [Tickets]
+      summary: Get ticket details
+      operationId: getTicket
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Ticket
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /tickets/{ticketId}/download:
+    get:
+      tags: [Tickets]
+      summary: Download ticket as PDF
+      operationId: downloadTicket
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      responses:
+        '200':
+          description: PDF ticket
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /tickets/{ticketId}/transfer:
+    post:
+      tags: [Tickets]
+      summary: Transfer a ticket to another user
+      operationId: transferTicket
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketTransferRequest'
+      responses:
+        '202':
+          description: Ticket transfer initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /tickets/{ticketId}/cancel:
+    post:
+      tags: [Tickets]
+      summary: Cancel an individual ticket
+      operationId: cancelTicket
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      responses:
+        '200':
+          description: Ticket cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  # ===========================================================================
+  # CHECK-IN
+  # ===========================================================================
+
+  /checkin/validate:
+    post:
+      tags: [Check-in]
+      summary: Validate and consume a ticket QR code
+      operationId: validateCheckIn
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckInValidationRequest'
+      responses:
+        '200':
+          description: Ticket validated and consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInValidationResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /events/{eventId}/checkins:
+    get:
+      tags: [Check-in]
+      summary: List check-ins for an event
+      operationId: listEventCheckins
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: checkedInFrom
+          in: query
+          schema: { type: string, format: date-time }
+        - name: checkedInTo
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Paginated check-ins
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCheckInResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /tickets/{ticketId}/checkin:
+    get:
+      tags: [Check-in]
+      summary: Get check-in status for a ticket
+      operationId: getTicketCheckIn
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      responses:
+        '200':
+          description: Check-in status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  # ===========================================================================
+  # CATEGORIES
+  # ===========================================================================
+
+  /categories:
+    get:
+      tags: [Categories]
+      summary: List event categories
+      operationId: listCategories
+      responses:
+        '200':
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+
+    post:
+      tags: [Categories]
+      summary: Create an event category
+      operationId: createCategory
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /categories/{categoryId}:
+    parameters:
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+    get:
+      tags: [Categories]
+      summary: Get category
+      operationId: getCategory
+      responses:
+        '200':
+          description: Category
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '404': { $ref: '#/components/responses/Problem404' }
+
+    patch:
+      tags: [Categories]
+      summary: Update category
+      operationId: updateCategory
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+    delete:
+      tags: [Categories]
+      summary: Delete category
+      operationId: deleteCategory
+      security:
+        - BearerAuth: []
+      responses:
+        '204': { description: Category deleted }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  # ===========================================================================
+  # ORGANIZER
+  # ===========================================================================
+
+  /organizer/events:
+    get:
+      tags: [Organizer]
+      summary: List events owned by the current organizer
+      operationId: listOrganizerEvents
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/EventStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Organizer events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEventResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+
+  /organizer/events/{eventId}/sales:
+    get:
+      tags: [Organizer]
+      summary: Get event sales report
+      operationId: getEventSales
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Sales report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesReportResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /organizer/events/{eventId}/attendees:
+    get:
+      tags: [Organizer]
+      summary: List event attendees
+      operationId: listEventAttendees
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: ticketStatus
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+      responses:
+        '200':
+          description: Attendees
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageAttendeeResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /organizer/events/{eventId}/checkin-summary:
+    get:
+      tags: [Organizer]
+      summary: Get event check-in summary
+      operationId: getCheckInSummary
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Check-in summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInSummaryResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /organizer/events/{eventId}/staff:
+    get:
+      tags: [Organizer]
+      summary: List event staff
+      operationId: listEventStaff
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Event staff
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventStaffResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+
+    post:
+      tags: [Organizer]
+      summary: Add event staff
+      operationId: addEventStaff
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventStaffRequest'
+      responses:
+        '201':
+          description: Staff member added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventStaffResponse'
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /organizer/events/{eventId}/staff/{userId}:
+    delete:
+      tags: [Organizer]
+      summary: Remove event staff
+      operationId: removeEventStaff
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204': { description: Staff member removed }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  # ===========================================================================
+  # NOTIFICATIONS
+  # ===========================================================================
+
+  /me/notifications:
+    get:
+      tags: [Notifications]
+      summary: List current user's notifications
+      operationId: listNotifications
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: unreadOnly
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageNotificationResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+
+  /me/notifications/{notificationId}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark notification as read
+      operationId: markNotificationRead
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '204': { description: Notification marked as read }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '404': { $ref: '#/components/responses/Problem404' }
+
+  /me/notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      operationId: markAllNotificationsRead
+      security:
+        - BearerAuth: []
+      responses:
+        '204': { description: Notifications marked as read }
+        '401': { $ref: '#/components/responses/Problem401' }
+
+  # ===========================================================================
+  # WEBHOOKS
+  # ===========================================================================
+
+  /webhooks/payments:
+    post:
+      tags: [Webhooks]
+      summary: Receive payment provider webhook
+      description: |
+        Public callback consumed by the payment provider. Authentication is
+        performed using the provider's webhook signature rather than JWT.
+        Processing must be idempotent using the provider event ID.
+      operationId: receivePaymentWebhook
+      parameters:
+        - name: X-Webhook-Signature
+          in: header
+          required: true
+          schema: { type: string }
+        - name: X-Webhook-Id
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentWebhookEvent'
+      responses:
+        '200': { description: Webhook processed }
+        '400': { $ref: '#/components/responses/Problem400' }
+        '401': { $ref: '#/components/responses/Problem401' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  # ===========================================================================
+  # ADMINISTRATIVE OPERATIONS
+  # ===========================================================================
+
+  /admin/events:
+    get:
+      tags: [Administration]
+      summary: List all events for administration
+      operationId: adminListEvents
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/EventStatus'
+        - name: organizerId
+          in: query
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEventResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+
+  /admin/orders/{orderId}/refund:
+    post:
+      tags: [Administration]
+      summary: Force or approve an order refund
+      operationId: adminRefundOrder
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminRefundRequest'
+      responses:
+        '202':
+          description: Refund requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+        '404': { $ref: '#/components/responses/Problem404' }
+        '409': { $ref: '#/components/responses/Problem409' }
+
+  /admin/audit-logs:
+    get:
+      tags: [Administration]
+      summary: Search audit logs
+      operationId: listAuditLogs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: entityType
+          in: query
+          schema: { type: string }
+        - name: entityId
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageAuditLogResponse'
+        '401': { $ref: '#/components/responses/Problem401' }
+        '403': { $ref: '#/components/responses/Problem403' }
+
+components:
+
+  # ===========================================================================
+  # SECURITY
+  # ===========================================================================
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # ===========================================================================
+  # PARAMETERS
+  # ===========================================================================
+
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+
+    TierId:
+      name: tierId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+
+    ReservationId:
+      name: reservationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+
+    PaymentId:
+      name: paymentId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    Page:
+      name: page
+      in: query
+      description: Zero-based page number.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+    Size:
+      name: size
+      in: query
+      description: Number of records per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    Sort:
+      name: sort
+      in: query
+      description: Spring Data-style sorting expression.
+      schema:
+        type: string
+        example: startDateTime,asc
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Unique key used to make state-changing requests idempotent.
+      schema:
+        type: string
+        maxLength: 128
+
+  # ===========================================================================
+  # RESPONSES
+  # ===========================================================================
+
+  responses:
+    Problem400:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+    Problem401:
+      description: Authentication required or invalid credentials
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+    Problem403:
+      description: Authenticated but insufficient permissions
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+    Problem404:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+    Problem409:
+      description: Conflict with current resource state
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+    Problem410:
+      description: Resource or token has expired
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+    Problem422:
+      description: Semantically invalid business operation
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+  # ===========================================================================
+  # SCHEMAS
+  # ===========================================================================
+
+  schemas:
+
+    Uuid:
+      type: string
+      format: uuid
+      example: "123e4567-e89b-12d3-a456-426614174000"
+
+    UserRole:
+      type: string
+      enum: [ROLE_CUSTOMER, ROLE_ORGANIZER, ROLE_ADMIN]
+
+    UserStatus:
+      type: string
+      enum: [PENDING_VERIFICATION, ACTIVE, SUSPENDED, DELETED]
+
+    UserCreateRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+          example: Jane Doe
+        email:
+          type: string
+          format: email
+          example: jane.doe@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          example: SecurePassword123!
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          format: email
+
+    AdminUserUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+
+    UserResponse:
+      type: object
+      required: [id, name, email, role, status]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/UserRole' }
+        status: { $ref: '#/components/schemas/UserStatus' }
+        emailVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/HalLinks'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          format: int64
+          description: Access-token lifetime in seconds.
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token: { type: string }
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+
+    EmailVerificationRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+
+    ResendVerificationRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+
+    EventStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, SALES_CLOSED, STARTED, FINISHED, CANCELLED]
+
+    EventCreateRequest:
+      type: object
+      required: [title, description, categoryId, venue, startDateTime, endDateTime]
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 10000
+        categoryId:
+          $ref: '#/components/schemas/Uuid'
+        venue:
+          $ref: '#/components/schemas/VenueRequest'
+        startDateTime:
+          type: string
+          format: date-time
+        endDateTime:
+          type: string
+          format: date-time
+        salesStartAt:
+          type: string
+          format: date-time
+        salesEndAt:
+          type: string
+          format: date-time
+        maxTicketsPerCustomer:
+          type: integer
+          minimum: 1
+          default: 10
+        ticketTiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketTierRequest'
+
+    EventUpdateRequest:
+      type: object
+      properties:
+        title: { type: string, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        categoryId: { $ref: '#/components/schemas/Uuid' }
+        venue: { $ref: '#/components/schemas/VenueRequest' }
+        startDateTime: { type: string, format: date-time }
+        endDateTime: { type: string, format: date-time }
+        salesStartAt: { type: string, format: date-time }
+        salesEndAt: { type: string, format: date-time }
+        maxTicketsPerCustomer:
+          type: integer
+          minimum: 1
+
+    EventCancellationRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+        refundCustomers:
+          type: boolean
+          default: true
+
+    VenueRequest:
+      type: object
+      required: [name, address, city, state, country]
+      properties:
+        name: { type: string, maxLength: 200 }
+        address: { type: string, maxLength: 300 }
+        addressNumber: { type: string, maxLength: 30 }
+        complement: { type: string, maxLength: 100 }
+        city: { type: string, maxLength: 100 }
+        state: { type: string, maxLength: 100 }
+        postalCode: { type: string, maxLength: 20 }
+        country: { type: string, maxLength: 100 }
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+
+    VenueResponse:
+      allOf:
+        - $ref: '#/components/schemas/VenueRequest'
+        - type: object
+          properties:
+            id: { $ref: '#/components/schemas/Uuid' }
+
+    EventDetailResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        title: { type: string }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/EventStatus' }
+        category:
+          $ref: '#/components/schemas/CategoryResponse'
+        venue:
+          $ref: '#/components/schemas/VenueResponse'
+        startDateTime:
+          type: string
+          format: date-time
+        endDateTime:
+          type: string
+          format: date-time
+        salesStartAt:
+          type: string
+          format: date-time
+        salesEndAt:
+          type: string
+          format: date-time
+        organizer:
+          $ref: '#/components/schemas/UserSummaryResponse'
+        maxTicketsPerCustomer:
+          type: integer
+        availableTickets:
+          type: integer
+        ticketTiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketTierResponse'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/HalLinks'
+
+    UserSummaryResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        email: { type: string, format: email }
+
+    TicketTierRequest:
+      type: object
+      required: [name, price, totalCapacity]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+        price:
+          type: number
+          format: double
+          minimum: 0
+          example: 250.00
+        totalCapacity:
+          type: integer
+          minimum: 1
+          example: 5000
+        salesStartAt:
+          type: string
+          format: date-time
+        salesEndAt:
+          type: string
+          format: date-time
+        maxPerCustomer:
+          type: integer
+          minimum: 1
+          default: 10
+
+    TicketTierUpdateRequest:
+      type: object
+      properties:
+        name: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        price:
+          type: number
+          format: double
+          minimum: 0
+        totalCapacity:
+          type: integer
+          minimum: 1
+        salesStartAt:
+          type: string
+          format: date-time
+        salesEndAt:
+          type: string
+          format: date-time
+        maxPerCustomer:
+          type: integer
+          minimum: 1
+
+    TicketTierResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        eventId: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        description: { type: string }
+        price:
+          type: number
+          format: double
+        totalCapacity: { type: integer }
+        availableQuantity: { type: integer }
+        reservedQuantity: { type: integer }
+        soldQuantity: { type: integer }
+        salesStartAt:
+          type: string
+          format: date-time
+        salesEndAt:
+          type: string
+          format: date-time
+        maxPerCustomer: { type: integer }
+        status:
+          type: string
+          enum: [AVAILABLE, SOLD_OUT, CLOSED, DISABLED]
+        _links:
+          $ref: '#/components/schemas/HalLinks'
+
+    ReservationRequest:
+      type: object
+      required: [eventId, items]
+      properties:
+        eventId:
+          $ref: '#/components/schemas/Uuid'
+        items:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ReservationItemRequest'
+
+    ReservationItemRequest:
+      type: object
+      required: [tierId, quantity]
+      properties:
+        tierId:
+          $ref: '#/components/schemas/Uuid'
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100
+
+    ReservationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReservationItemResponse'
+        subtotal:
+          type: number
+          format: double
+        fees:
+          type: number
+          format: double
+        totalAmount:
+          type: number
+          format: double
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/HalLinks'
+
+    ReservationItemResponse:
+      type: object
+      properties:
+        tierId: { $ref: '#/components/schemas/Uuid' }
+        tierName: { type: string }
+        quantity: { type: integer }
+        unitPrice:
+          type: number
+          format: double
+        totalPrice:
+          type: number
+          format: double
+
+    ReservationStatus:
+      type: string
+      enum: [ACTIVE, CONVERTED, CANCELLED, EXPIRED]
+
+    CheckoutRequest:
+      type: object
+      required: [reservationId, paymentMethod, attendees]
+      properties:
+        reservationId:
+          type: string
+          format: uuid
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        attendees:
+          type: array
+          description: One attendee entry for every reserved ticket.
+          items:
+            $ref: '#/components/schemas/AttendeeInfo'
+        billingAddress:
+          $ref: '#/components/schemas/AddressRequest'
+
+    AttendeeInfo:
+      type: object
+      required: [name, documentNumber]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        documentNumber:
+          type: string
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          maxLength: 30
+
+    AddressRequest:
+      type: object
+      required: [postalCode, address, city, state, country]
+      properties:
+        postalCode: { type: string }
+        address: { type: string }
+        number: { type: string }
+        complement: { type: string }
+        city: { type: string }
+        state: { type: string }
+        country: { type: string }
+
+    CheckoutResponse:
+      type: object
+      properties:
+        order:
+          $ref: '#/components/schemas/OrderResponse'
+        payment:
+          $ref: '#/components/schemas/PaymentResponse'
+
+    OrderStatus:
+      type: string
+      enum:
+        - PENDING_PAYMENT
+        - PAID
+        - PAYMENT_FAILED
+        - CANCELLED
+        - REFUND_PENDING
+        - REFUNDED
+        - PARTIALLY_REFUNDED
+        - EXPIRED
+
+    OrderResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        orderNumber:
+          type: string
+          example: ORD-20260903-00088412
+        customer:
+          $ref: '#/components/schemas/UserSummaryResponse'
+        event:
+          $ref: '#/components/schemas/EventSummaryResponse'
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemResponse'
+        subtotal:
+          type: number
+          format: double
+        fees:
+          type: number
+          format: double
+        discount:
+          type: number
+          format: double
+        totalAmount:
+          type: number
+          format: double
+        currency:
+          type: string
+          example: BRL
+        createdAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/HalLinks'
+
+    OrderItemResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        ticketId:
+          type: string
+          format: uuid
+        tierId: { $ref: '#/components/schemas/Uuid' }
+        tierName: { type: string }
+        attendee:
+          $ref: '#/components/schemas/AttendeeInfo'
+        unitPrice:
+          type: number
+          format: double
+        quantity: { type: integer }
+        totalPrice:
+          type: number
+          format: double
+
+    EventSummaryResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        title: { type: string }
+        startDateTime:
+          type: string
+          format: date-time
+        venue:
+          $ref: '#/components/schemas/VenueResponse'
+
+    PaymentMethod:
+      type: string
+      enum: [PIX, CREDIT_CARD, DEBIT_CARD, STRIPE_PAYMENT_INTENT]
+
+    PaymentStatus:
+      type: string
+      enum:
+        - PENDING
+        - PROCESSING
+        - APPROVED
+        - DECLINED
+        - CANCELLED
+        - REFUND_PENDING
+        - REFUNDED
+        - PARTIALLY_REFUNDED
+
+    PaymentResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        orderId: { $ref: '#/components/schemas/Uuid' }
+        provider: { type: string, example: STRIPE }
+        providerTransactionId: { type: string }
+        method: { $ref: '#/components/schemas/PaymentMethod' }
+        status: { $ref: '#/components/schemas/PaymentStatus' }
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+          example: BRL
+        paymentPayload:
+          type: object
+          additionalProperties: true
+          description: Provider-specific payment data such as PIX copy-and-paste payload.
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    RefundRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+        amount:
+          type: number
+          format: double
+          minimum: 0
+
+    AdminRefundRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 1000
+        amount:
+          type: number
+          format: double
+          minimum: 0
+
+    RefundResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        orderId: { $ref: '#/components/schemas/Uuid' }
+        amount:
+          type: number
+          format: double
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED]
+        reason: { type: string }
+        requestedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    PaymentWebhookEvent:
+      type: object
+      required: [eventId, orderId, status]
+      properties:
+        eventId:
+          type: string
+        orderId:
+          $ref: '#/components/schemas/Uuid'
+        providerTransactionId:
+          type: string
+        status:
+          type: string
+          enum: [APPROVED, DECLINED, REFUNDED, PARTIALLY_REFUNDED]
+        amount:
+          type: number
+          format: double
+        occurredAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+
+    TicketStatus:
+      type: string
+      enum: [VALID, USED, CANCELLED, TRANSFER_PENDING, TRANSFERRED]
+
+    TicketResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          $ref: '#/components/schemas/Uuid'
+        event:
+          $ref: '#/components/schemas/EventSummaryResponse'
+        tier:
+          $ref: '#/components/schemas/TicketTierResponse'
+        owner:
+          $ref: '#/components/schemas/UserSummaryResponse'
+        attendee:
+          $ref: '#/components/schemas/AttendeeInfo'
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        qrCodeSignature:
+          type: string
+          description: Signed token used for ticket validation.
+        issuedAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/HalLinks'
+
+    TicketTransferRequest:
+      type: object
+      required: [recipientEmail]
+      properties:
+        recipientEmail:
+          type: string
+          format: email
+        attendee:
+          $ref: '#/components/schemas/AttendeeInfo'
+
+    CheckInValidationRequest:
+      type: object
+      required: [qrCodeSignature]
+      properties:
+        qrCodeSignature:
+          type: string
+        deviceId:
+          type: string
+          maxLength: 100
+
+    CheckInValidationResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        ticket:
+          $ref: '#/components/schemas/TicketResponse'
+        message:
+          type: string
+        checkedInAt:
+          type: string
+          format: date-time
+
+    CheckInResponse:
+      type: object
+      properties:
+        ticketId:
+          type: string
+          format: uuid
+        checkedIn:
+          type: boolean
+        checkedInAt:
+          type: string
+          format: date-time
+        checkedInBy:
+          $ref: '#/components/schemas/UserSummaryResponse'
+
+    CheckInSummaryResponse:
+      type: object
+      properties:
+        totalTickets: { type: integer }
+        validTickets: { type: integer }
+        usedTickets: { type: integer }
+        cancelledTickets: { type: integer }
+        checkInPercentage:
+          type: number
+          format: double
+
+    CheckInRecordResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        ticketId:
+          type: string
+          format: uuid
+        attendeeName: { type: string }
+        checkedInAt:
+          type: string
+          format: date-time
+        checkedInBy:
+          $ref: '#/components/schemas/UserSummaryResponse'
+        deviceId: { type: string }
+
+    CategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+
+    CategoryResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        description: { type: string }
+        eventCount: { type: integer }
+
+    EventStaffRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [CHECKIN, VIEW_ATTENDEES, VIEW_SALES]
+
+    EventStaffResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserSummaryResponse'
+        permissions:
+          type: array
+          items: { type: string }
+        createdAt:
+          type: string
+          format: date-time
+
+    SalesReportResponse:
+      type: object
+      properties:
+        eventId:
+          $ref: '#/components/schemas/Uuid'
+        totalOrders: { type: integer }
+        paidOrders: { type: integer }
+        cancelledOrders: { type: integer }
+        ticketsSold: { type: integer }
+        ticketsRemaining: { type: integer }
+        grossRevenue:
+          type: number
+          format: double
+        fees:
+          type: number
+          format: double
+        refunds:
+          type: number
+          format: double
+        netRevenue:
+          type: number
+          format: double
+        salesByTier:
+          type: array
+          items:
+            type: object
+            properties:
+              tierId: { $ref: '#/components/schemas/Uuid' }
+              tierName: { type: string }
+              ticketsSold: { type: integer }
+              revenue:
+                type: number
+                format: double
+
+    AttendeeResponse:
+      type: object
+      properties:
+        ticketId:
+          type: string
+          format: uuid
+        name: { type: string }
+        email:
+          type: string
+          format: email
+        documentNumber: { type: string }
+        tierName: { type: string }
+        ticketStatus:
+          $ref: '#/components/schemas/TicketStatus'
+        checkedIn:
+          type: boolean
+
+    NotificationResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        type:
+          type: string
+          enum:
+            - ORDER_PAID
+            - PAYMENT_FAILED
+            - TICKET_ISSUED
+            - EVENT_CANCELLED
+            - REFUND_COMPLETED
+            - TICKET_TRANSFER
+            - SYSTEM
+        title: { type: string }
+        message: { type: string }
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    AuditLogResponse:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        action: { type: string }
+        entityType: { type: string }
+        entityId: { type: string }
+        ipAddress: { type: string }
+        createdAt:
+          type: string
+          format: date-time
+
+    HalLink:
+      type: object
+      required: [href]
+      properties:
+        href:
+          type: string
+          format: uri
+        method:
+          type: string
+        templated:
+          type: boolean
+
+    HalLinks:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/HalLink'
+
+    PageMetadata:
+      type: object
+      properties:
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+        first: { type: boolean }
+        last: { type: boolean }
+
+    PageEventResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventDetailResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageTicketResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageOrderResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageUserResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageAttendeeResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendeeResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageCheckInResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CheckInRecordResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageNotificationResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PageAuditLogResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogResponse'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details response.
+      required: [type, title, status, detail]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://api.example.com/problems/insufficient-inventory
+        title:
+          type: string
+          example: Insufficient ticket inventory
+        status:
+          type: integer
+          example: 409
+        detail:
+          type: string
+          example: Only 1 ticket remains available for this ticket tier.
+        instance:
+          type: string
+          format: uri
+        timestamp:
+          type: string
+          format: date-time
+        code:
+          type: string
+          example: TICKET_INVENTORY_UNAVAILABLE
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+              rejectedValue: {}
+
