@@ -3,7 +3,7 @@ title: Database Diagram — Event & Ticketing Platform API
 ---
 erDiagram
     %% Diagram Version: 1.0.0
-    %% Author: Enzo Bernar
+    %% Author: Enzo Bernardis
     %% Date: 03/09/2026
     
     direction TB
@@ -16,6 +16,7 @@ erDiagram
         uuid id PK
         varchar(120) name
         varchar(320) email UK
+        boolean verifiedEmail
         varchar(255) passwordHash
         timestamp createdAt
         timestamp updatedAt
