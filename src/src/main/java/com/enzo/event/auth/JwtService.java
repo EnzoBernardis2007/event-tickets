@@ -1,4 +1,4 @@
-package com.enzo.event.shared.security;
+package com.enzo.event.auth;
 
 import com.enzo.event.user.User;
 import io.jsonwebtoken.Claims;

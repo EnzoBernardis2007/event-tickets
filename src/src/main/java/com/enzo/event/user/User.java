@@ -1,5 +1,8 @@
 package com.enzo.event.user;
 
+import com.enzo.event.role.Role;
+import com.enzo.event.role.UserRole;
+import com.enzo.event.role.UserRoleId;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;

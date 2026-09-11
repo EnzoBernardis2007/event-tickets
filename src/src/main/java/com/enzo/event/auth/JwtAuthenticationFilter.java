@@ -1,4 +1,4 @@
-package com.enzo.event.shared.security;
+package com.enzo.event.auth;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;

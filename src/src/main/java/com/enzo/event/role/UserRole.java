@@ -1,5 +1,6 @@
-package com.enzo.event.user;
+package com.enzo.event.role;
 
+import com.enzo.event.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

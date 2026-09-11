@@ -1,4 +1,4 @@
-package com.enzo.event.user;
+package com.enzo.event.role;
 
 import jakarta.persistence.*;
 import lombok.Getter;

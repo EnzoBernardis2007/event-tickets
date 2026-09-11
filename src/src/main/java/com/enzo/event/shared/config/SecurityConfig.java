@@ -1,7 +1,7 @@
 package com.enzo.event.shared.config;
 
 import com.enzo.event.shared.security.CustomAuthenticationEntryPoint;
-import com.enzo.event.shared.security.JwtAuthenticationFilter;
+import com.enzo.event.auth.JwtAuthenticationFilter;
 import com.enzo.event.user.UserRepository;
 
 import org.springframework.context.annotation.Bean;
