@@ -1,48 +1,38 @@
 package com.enzo.event.notification;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import com.resend.Resend;
+import com.resend.core.exception.ResendException;
+import com.resend.services.emails.model.CreateEmailOptions;
 import org.springframework.stereotype.Service;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-
 @Service
-@RequiredArgsConstructor
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    private final Resend resend;
+
+    public EmailService(Resend resend) {
+        this.resend = resend;
+    }
 
     public void sendEmailVerification(
             String email,
-            String name,
-            String token
+            String verificationUrl
     ) {
+        CreateEmailOptions params = CreateEmailOptions.builder()
+                .from("onboarding@resend.dev")
+                .to(email)
+                .subject("Verify your email")
+                .html("""
+                        <h1>Verify your email</h1>
+                        <p>Click the link below to verify your email:</p>
+                        <a href="%s">Verify email</a>
+                        """.formatted(verificationUrl))
+                .build();
 
-        String verificationUrl =
-                "http://localhost:8080/auth/verify-email?token="
-                        + URLEncoder.encode(
-                                token,
-                                StandardCharsets.UTF_8
-                        );
-
-        SimpleMailMessage message = new SimpleMailMessage();
-
-        message.setTo(email);
-        message.setSubject("Confirm your email");
-        message.setText("""
-                Hello %s,
-
-                Please confirm your email address by clicking the link below:
-
-                %s
-
-                This link expires in 24 hours.
-
-                If you did not create an account, you can ignore this email.
-                """.formatted(name, verificationUrl));
-
-        mailSender.send(message);
+        try {
+            resend.emails().send(params);
+        } catch (ResendException e) {
+            throw new RuntimeException("Failed to send verification email", e);
+        }
     }
 }

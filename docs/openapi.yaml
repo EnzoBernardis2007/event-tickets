@@ -361,10 +361,6 @@ paths:
           in: query
           schema:
             $ref: '#/components/schemas/UserRole'
-        - name: status
-          in: query
-          schema:
-            $ref: '#/components/schemas/UserStatus'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - $ref: '#/components/parameters/Sort'
@@ -1769,10 +1765,6 @@ components:
       type: string
       enum: [ROLE_CUSTOMER, ROLE_ORGANIZER, ROLE_ADMIN]
 
-    UserStatus:
-      type: string
-      enum: [PENDING_VERIFICATION, ACTIVE, SUSPENDED, DELETED]
-
     UserCreateRequest:
       type: object
       required: [name, email, password]
@@ -1811,8 +1803,6 @@ components:
           type: string
         role:
           $ref: '#/components/schemas/UserRole'
-        status:
-          $ref: '#/components/schemas/UserStatus'
 
     UserResponse:
       type: object
@@ -1822,7 +1812,6 @@ components:
         name: { type: string }
         email: { type: string, format: email }
         role: { $ref: '#/components/schemas/UserRole' }
-        status: { $ref: '#/components/schemas/UserStatus' }
         emailVerified:
           type: boolean
         createdAt:

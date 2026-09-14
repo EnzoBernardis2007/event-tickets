@@ -19,7 +19,6 @@ public class UserRegisteredEventHandler {
     public void handle(UserRegisteredEvent event) {
         emailService.sendEmailVerification(
                 event.email(),
-                event.name(),
                 event.verificationToken()
         );
     }
