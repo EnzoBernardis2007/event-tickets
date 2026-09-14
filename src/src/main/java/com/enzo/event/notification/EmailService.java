@@ -16,7 +16,7 @@ public class EmailService {
 
     public void sendEmailVerification(
             String email,
-            String verificationUrl
+            String verificationToken
     ) {
         CreateEmailOptions params = CreateEmailOptions.builder()
                 .from("onboarding@resend.dev")
@@ -25,8 +25,8 @@ public class EmailService {
                 .html("""
                         <h1>Verify your email</h1>
                         <p>Click the link below to verify your email:</p>
-                        <a href="%s">Verify email</a>
-                        """.formatted(verificationUrl))
+                        <a href="http://localhost:8080/auth/verify-email?token=%s">Verify email</a>
+                        """.formatted(verificationToken))
                 .build();
 
         try {
