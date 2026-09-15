@@ -11,7 +11,7 @@ info:
     The API is designed for a Spring Boot monolith using PostgreSQL,
     Spring Data JPA/Hibernate, Spring Security/JWT, Flyway/Liquibase,
     RFC 7807 Problem Details, pagination, sorting, filtering, and HATEOAS.
-  version: 1.0.0
+  version: 1.1.0
   contact:
     name: Enzo Bernardis
     email: enzobernardis2007@gmail.com
@@ -150,19 +150,32 @@ paths:
         '410': { $ref: '#/components/responses/Problem410' }
 
   /auth/verify-email:
-    post:
+    get:
       tags: [Authentication]
-      summary: Verify an email address
+      summary: Verify an email address using a token
+      description: |
+        Validates an email confirmation token received via link/URL.
+        The token is single-use and expires after a short duration.
       operationId: verifyEmail
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/EmailVerificationRequest'
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: Single-use verification token sent to the user's email.
+          schema:
+            type: string
+            example: "d3b07384d113edec49eaa6238ad5ff00"
       responses:
-        '204': { description: Email verified }
-        '400': { $ref: '#/components/responses/Problem400' }
+        '204':
+          description: Email successfully verified
+        '400':
+          $ref: '#/components/responses/Problem400'
+        '410':
+          description: Token has expired or was already used
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 
   /auth/resend-verification:
     post:
@@ -1871,12 +1884,6 @@ components:
           type: string
           format: password
           minLength: 8
-
-    EmailVerificationRequest:
-      type: object
-      required: [token]
-      properties:
-        token: { type: string }
 
     ResendVerificationRequest:
       type: object
